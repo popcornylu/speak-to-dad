@@ -1,0 +1,250 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  background: #fff;
+  color: #222;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* --- Text Display Area --- */
+#text-display-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 16px;
+  cursor: default;
+}
+
+#text-content {
+  width: 100%;
+  text-align: center;
+  word-break: break-word;
+  line-height: 1.3;
+  transition: font-size 0.1s ease;
+}
+
+#text-content.placeholder {
+  color: #aaa;
+  font-size: 24px !important;
+}
+
+#text-content .interim {
+  color: #999;
+}
+
+/* --- Button Area --- */
+#button-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+}
+
+#status-text {
+  font-size: 14px;
+  color: #888;
+}
+
+#buttons-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+
+.btn-side {
+  width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#clear-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: #f5f5f5;
+  color: #999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+#clear-btn:active {
+  background: #e0e0e0;
+  color: #f44336;
+}
+
+#record-btn-wrap {
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
+.ripple-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(244, 67, 54, 0.4);
+  opacity: 0;
+  transform: scale(1);
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+#record-btn {
+  position: relative;
+  z-index: 1;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 3px solid #2196F3;
+  background: #fff;
+  color: #2196F3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  transition: border-color 0.2s, background-color 0.2s, color 0.2s;
+}
+
+#record-btn.recording {
+  border-color: #f44336;
+  background: #f44336;
+  color: #fff;
+}
+
+.recording-active .ripple-ring {
+  animation: ripple-out 1.8s ease-out infinite;
+}
+.recording-active #ripple2 { animation-delay: 0.4s; }
+.recording-active #ripple3 { animation-delay: 0.8s; }
+
+/* Volume-driven scale — set via JS custom property --vol (0–1) */
+.has-voice .ripple-ring {
+  animation-duration: 1.2s;
+}
+
+@keyframes ripple-out {
+  0% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2);
+  }
+}
+
+/* Volume bar indicator */
+#volume-bar {
+  width: 120px;
+  height: 4px;
+  background: #e0e0e0;
+  border-radius: 2px;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+#volume-bar.active {
+  opacity: 1;
+}
+
+#volume-fill {
+  height: 100%;
+  width: 0%;
+  background: #f44336;
+  border-radius: 2px;
+  transition: width 0.08s ease-out;
+}
+
+/* --- Edit Overlay --- */
+#edit-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+#edit-overlay.hidden {
+  display: none;
+}
+
+#edit-textarea {
+  flex: 1;
+  margin: 16px;
+  padding: 16px;
+  font-size: 24px;
+  font-family: inherit;
+  border: none;
+  border-radius: 12px;
+  resize: none;
+  outline: none;
+  -webkit-user-select: text;
+  user-select: text;
+  background: #fff;
+  color: #222;
+  line-height: 1.4;
+}
+
+#edit-buttons {
+  display: flex;
+  gap: 12px;
+  padding: 0 16px 16px;
+}
+
+#edit-buttons button {
+  flex: 1;
+  padding: 14px;
+  font-size: 18px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+#edit-cancel {
+  background: #e0e0e0;
+  color: #333;
+}
+
+#edit-ok {
+  background: #2196F3;
+  color: #fff;
+}

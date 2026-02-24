@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Touch STT">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/style.css">
+  <title>Touch STT</title>
+</head>
+<body>
+  <div id="app">
+    <div id="text-display-area">
+      <div id="text-content">按住下方按鈕開始說話</div>
+    </div>
+    <div id="button-area">
+      <div id="volume-bar"><div id="volume-fill"></div></div>
+      <div id="status-text">按住說話</div>
+      <div id="buttons-row">
+        <div class="btn-side"></div>
+        <div id="record-btn-wrap">
+          <div class="ripple-ring" id="ripple1"></div>
+          <div class="ripple-ring" id="ripple2"></div>
+          <div class="ripple-ring" id="ripple3"></div>
+          <button id="record-btn" aria-label="錄音">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="36" height="36" fill="currentColor">
+              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+              <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+            </svg>
+          </button>
+        </div>
+        <div class="btn-side">
+          <button id="clear-btn" aria-label="清除">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM8 9h8v10H8V9zm7.5-5l-1-1h-5l-1 1H5v2h14V4h-3.5z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="edit-overlay" class="hidden">
+      <textarea id="edit-textarea"></textarea>
+      <div id="edit-buttons">
+        <button id="edit-cancel">取消</button>
+        <button id="edit-ok">確定</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/speech.js"></script>
+  <script src="js/textfit.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
