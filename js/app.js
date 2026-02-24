@@ -5,6 +5,7 @@
   var recordBtn = document.getElementById('record-btn');
   var statusText = document.getElementById('status-text');
   var keyboardBtn = document.getElementById('keyboard-btn');
+  var hiddenInput = document.getElementById('hidden-input');
   var clearBtn = document.getElementById('clear-btn');
 
   // --- State ---
@@ -202,12 +203,10 @@
   function startRecording() {
     if (state === 'editing') {
       wasEditing = true;
-      // Read current text from contenteditable before recording
-      displayText = textContent.textContent.replace(/\u200B/g, '');
-      cursorPos = getCursorPosFromSelection();
-      if (cursorPos > displayText.length) cursorPos = displayText.length;
-      if (cursorPos < 0) cursorPos = 0;
-      textContent.blur();
+      // Read current text from hidden input before recording
+      displayText = hiddenInput.value;
+      cursorPos = hiddenInput.selectionStart || 0;
+      hiddenInput.blur();
     }
     state = 'recording';
     recordBtn.classList.add('recording');
@@ -243,13 +242,7 @@
 
     if (wasEditing) {
       wasEditing = false;
-      // Re-enter edit mode
-      state = 'editing';
-      textContent.classList.remove('placeholder');
-      textContent.textContent = displayText;
-      fitText(textContent, textDisplayArea);
-      textContent.focus();
-      setCursorPosInDom(cursorPos);
+      enterEditMode();
     } else if (displayText) {
       state = 'displaying';
       renderText();
@@ -272,30 +265,23 @@
   }
 
   // --- Edit mode ---
+  function syncHiddenInput() {
+    hiddenInput.value = displayText;
+    hiddenInput.setSelectionRange(cursorPos, cursorPos);
+  }
+
   function enterEditMode() {
     state = 'editing';
     document.body.classList.add('edit-mode');
 
-    // Set text content without fake caret for native editing
-    textContent.classList.remove('placeholder');
-    textContent.textContent = displayText;
-    fitText(textContent, textDisplayArea);
-
-    // Focus and set cursor position
-    textContent.focus();
-    setCursorPosInDom(cursorPos);
+    // Render with fake caret then focus hidden input
+    renderText();
+    syncHiddenInput();
+    hiddenInput.focus();
   }
 
   function exitEditMode() {
-    // Read current text from contenteditable
-    displayText = textContent.textContent.replace(/\u200B/g, '');
-    cursorPos = getCursorPosFromSelection();
-
-    // Clamp cursor
-    if (cursorPos > displayText.length) cursorPos = displayText.length;
-    if (cursorPos < 0) cursorPos = 0;
-
-    textContent.blur();
+    hiddenInput.blur();
     document.body.classList.remove('edit-mode');
 
     if (displayText) {
@@ -379,11 +365,19 @@
       if (state === 'recording') stopRecording();
     });
 
-    // Prevent keyboard outside edit mode
-    textContent.addEventListener('focus', function () {
-      if (state !== 'editing') {
-        textContent.blur();
-      }
+    // Hidden input — sync edits back to display
+    hiddenInput.addEventListener('input', function () {
+      if (state !== 'editing') return;
+      displayText = hiddenInput.value;
+      cursorPos = hiddenInput.selectionStart || 0;
+      renderText();
+    });
+
+    // Track cursor movement in hidden input
+    hiddenInput.addEventListener('keyup', function () {
+      if (state !== 'editing') return;
+      cursorPos = hiddenInput.selectionStart || 0;
+      renderText();
     });
 
     // Long press on text area — touch
@@ -429,21 +423,6 @@
       }
     });
 
-    // Input during edit mode — refit text
-    textContent.addEventListener('input', function () {
-      if (state === 'editing') {
-        fitText(textContent, textDisplayArea);
-      }
-    });
-
-    // Paste — plain text only
-    textContent.addEventListener('paste', function (e) {
-      if (state !== 'editing') return;
-      e.preventDefault();
-      var text = (e.clipboardData || window.clipboardData).getData('text/plain');
-      document.execCommand('insertText', false, text);
-    });
-
     // Keyboard button — toggle edit mode
     keyboardBtn.addEventListener('click', function () {
       if (state === 'recording') return;
@@ -456,15 +435,38 @@
 
     // Clear button
     clearBtn.addEventListener('click', function () {
-      if (state === 'recording' || state === 'editing') return;
+      if (state === 'recording') return;
+      if (state === 'editing') {
+        hiddenInput.blur();
+        document.body.classList.remove('edit-mode');
+      }
       displayText = '';
       cursorPos = 0;
       showPlaceholder();
       state = 'idle';
     });
 
+    // --- Viewport height tracking (iOS keyboard) ---
+    function updateVh() {
+      var vh = (window.visualViewport ? window.visualViewport.height : window.innerHeight) / 100;
+      document.documentElement.style.setProperty('--vh', vh + 'px');
+    }
+    updateVh();
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', function () {
+        updateVh();
+        if (state === 'editing') {
+          fitText(textContent, textDisplayArea);
+        } else if (displayText && (state === 'displaying' || state === 'idle')) {
+          renderText();
+        }
+      });
+    }
+
     // Resize handler
     window.addEventListener('resize', function () {
+      updateVh();
       if (state === 'editing') {
         fitText(textContent, textDisplayArea);
       } else if (displayText && (state === 'displaying' || state === 'idle')) {
