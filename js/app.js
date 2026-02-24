@@ -207,6 +207,7 @@
       displayText = hiddenInput.value;
       cursorPos = hiddenInput.selectionStart || 0;
       hiddenInput.blur();
+      document.body.classList.remove('edit-mode');
     }
     state = 'recording';
     recordBtn.classList.add('recording');
@@ -259,6 +260,7 @@
     }
     recordBtn.classList.remove('recording');
     wasEditing = false;
+    document.body.classList.remove('edit-mode');
     statusText.textContent = '按住說話';
     stopAudioLevel();
     state = displayText ? 'displaying' : 'idle';
@@ -435,11 +437,7 @@
 
     // Clear button
     clearBtn.addEventListener('click', function () {
-      if (state === 'recording') return;
-      if (state === 'editing') {
-        hiddenInput.blur();
-        document.body.classList.remove('edit-mode');
-      }
+      if (state === 'recording' || state === 'editing') return;
       displayText = '';
       cursorPos = 0;
       showPlaceholder();
