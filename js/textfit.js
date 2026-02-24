@@ -8,6 +8,10 @@ var fitText = (function () {
   }
 
   function fit(element, container) {
+    // Hide fake caret during measurement to prevent 2px border from affecting size
+    var fakeCaret = element.querySelector('.fake-caret');
+    if (fakeCaret) fakeCaret.style.display = 'none';
+
     var lo = 16;
     var hi = 48;
     var best = lo;
@@ -23,6 +27,9 @@ var fitText = (function () {
     }
 
     element.style.fontSize = best + 'px';
+
+    // Restore fake caret
+    if (fakeCaret) fakeCaret.style.display = '';
   }
 
   function fitText(element, container) {

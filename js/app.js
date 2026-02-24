@@ -4,15 +4,13 @@
   var textContent = document.getElementById('text-content');
   var recordBtn = document.getElementById('record-btn');
   var statusText = document.getElementById('status-text');
-  var editOverlay = document.getElementById('edit-overlay');
-  var editTextarea = document.getElementById('edit-textarea');
-  var editOk = document.getElementById('edit-ok');
-  var editCancel = document.getElementById('edit-cancel');
+  var keyboardBtn = document.getElementById('keyboard-btn');
   var clearBtn = document.getElementById('clear-btn');
 
   // --- State ---
   var state = 'idle'; // idle | recording | displaying | editing
   var displayText = '';
+  var cursorPos = 0;
   var speechEngine = null;
 
   // --- Audio level ---
@@ -27,6 +25,7 @@
 
   // --- Long press detection ---
   var longPressTimer = null;
+  var longPressTriggered = false;
   var LONG_PRESS_MS = 600;
 
   // --- Init ---
@@ -50,9 +49,94 @@
   }
 
   function showPlaceholder() {
-    textContent.textContent = '按住下方按鈕開始說話';
+    textContent.innerHTML = '按住下方按鈕開始說話';
     textContent.classList.add('placeholder');
     textContent.style.fontSize = '';
+  }
+
+  // --- Render helpers ---
+  function renderText() {
+    if (!displayText) {
+      showPlaceholder();
+      return;
+    }
+    textContent.classList.remove('placeholder');
+    var before = escapeHtml(displayText.slice(0, cursorPos));
+    var after = escapeHtml(displayText.slice(cursorPos));
+    textContent.innerHTML = before + '<span class="fake-caret">\u200B</span>' + after;
+    fitText(textContent, textDisplayArea);
+  }
+
+  function renderInterimAtCursor(finalPart, interimPart) {
+    textContent.classList.remove('placeholder');
+    var before = escapeHtml(displayText.slice(0, cursorPos));
+    var after = escapeHtml(displayText.slice(cursorPos));
+    var html = before + escapeHtml(finalPart);
+    if (interimPart) {
+      html += '<span class="interim">' + escapeHtml(interimPart) + '</span>';
+    }
+    html += after;
+    textContent.innerHTML = html;
+    fitText(textContent, textDisplayArea);
+  }
+
+  // --- DOM cursor helpers ---
+  function getCursorPosFromSelection() {
+    var sel = window.getSelection();
+    if (!sel.rangeCount) return cursorPos;
+
+    var range = sel.getRangeAt(0);
+    // Create a range from start of textContent to cursor position
+    var preRange = document.createRange();
+    preRange.selectNodeContents(textContent);
+    preRange.setEnd(range.startContainer, range.startOffset);
+    // Get text length before cursor (excluding zero-width spaces from fake caret)
+    var text = preRange.toString().replace(/\u200B/g, '');
+    return text.length;
+  }
+
+  function setCursorPosInDom(pos) {
+    var sel = window.getSelection();
+    var range = document.createRange();
+
+    // Walk text nodes to find the right position
+    var remaining = pos;
+    var walker = document.createTreeWalker(textContent, NodeFilter.SHOW_TEXT, null, false);
+    var node;
+    var found = false;
+
+    while ((node = walker.nextNode())) {
+      // Skip zero-width space nodes (fake caret content)
+      var nodeText = node.textContent.replace(/\u200B/g, '');
+      if (nodeText.length === 0) continue;
+
+      if (remaining <= nodeText.length) {
+        // Account for zero-width spaces in offset calculation
+        var actualOffset = 0;
+        var counted = 0;
+        for (var i = 0; i < node.textContent.length; i++) {
+          if (node.textContent[i] !== '\u200B') {
+            if (counted === remaining) break;
+            counted++;
+          }
+          actualOffset++;
+        }
+        range.setStart(node, actualOffset);
+        range.collapse(true);
+        found = true;
+        break;
+      }
+      remaining -= nodeText.length;
+    }
+
+    if (!found) {
+      // Place at end
+      range.selectNodeContents(textContent);
+      range.collapse(false);
+    }
+
+    sel.removeAllRanges();
+    sel.addRange(range);
   }
 
   // --- Audio level monitoring ---
@@ -113,8 +197,18 @@
   }
 
   // --- Recording ---
+  var wasEditing = false;
+
   function startRecording() {
-    if (state === 'editing') return;
+    if (state === 'editing') {
+      wasEditing = true;
+      // Read current text from contenteditable before recording
+      displayText = textContent.textContent.replace(/\u200B/g, '');
+      cursorPos = getCursorPosFromSelection();
+      if (cursorPos > displayText.length) cursorPos = displayText.length;
+      if (cursorPos < 0) cursorPos = 0;
+      textContent.blur();
+    }
     state = 'recording';
     recordBtn.classList.add('recording');
     statusText.textContent = '聆聽中...';
@@ -132,32 +226,33 @@
 
   // --- Speech callbacks ---
   function handleInterim(finalPart, interimPart) {
-    textContent.classList.remove('placeholder');
-    var fullText = displayText + finalPart;
-    if (interimPart) {
-      textContent.innerHTML = escapeHtml(fullText) +
-        '<span class="interim">' + escapeHtml(interimPart) + '</span>';
-    } else {
-      textContent.textContent = fullText;
-    }
-    fitText(textContent, textDisplayArea);
+    renderInterimAtCursor(finalPart, interimPart);
   }
 
   function handleFinal(finalPart) {
-    textContent.classList.remove('placeholder');
-    textContent.textContent = displayText + finalPart;
-    fitText(textContent, textDisplayArea);
+    renderInterimAtCursor(finalPart, '');
   }
 
   function handleEnd(sessionText) {
     if (sessionText) {
-      displayText += sessionText;
+      var before = displayText.slice(0, cursorPos);
+      var after = displayText.slice(cursorPos);
+      displayText = before + sessionText + after;
+      cursorPos += sessionText.length;
     }
-    state = 'displaying';
-    textContent.classList.remove('placeholder');
-    if (displayText) {
+
+    if (wasEditing) {
+      wasEditing = false;
+      // Re-enter edit mode
+      state = 'editing';
+      textContent.classList.remove('placeholder');
       textContent.textContent = displayText;
       fitText(textContent, textDisplayArea);
+      textContent.focus();
+      setCursorPosInDom(cursorPos);
+    } else if (displayText) {
+      state = 'displaying';
+      renderText();
     } else {
       showPlaceholder();
       state = 'idle';
@@ -170,6 +265,7 @@
       textContent.classList.add('placeholder');
     }
     recordBtn.classList.remove('recording');
+    wasEditing = false;
     statusText.textContent = '按住說話';
     stopAudioLevel();
     state = displayText ? 'displaying' : 'idle';
@@ -177,25 +273,81 @@
 
   // --- Edit mode ---
   function enterEditMode() {
-    if (!displayText) return;
     state = 'editing';
-    editTextarea.value = displayText;
-    editOverlay.classList.remove('hidden');
-    editTextarea.focus();
+    document.body.classList.add('edit-mode');
+
+    // Set text content without fake caret for native editing
+    textContent.classList.remove('placeholder');
+    textContent.textContent = displayText;
+    fitText(textContent, textDisplayArea);
+
+    // Focus and set cursor position
+    textContent.focus();
+    setCursorPosInDom(cursorPos);
   }
 
-  function exitEditMode(save) {
-    if (save) {
-      displayText = editTextarea.value;
-      if (displayText) {
-        textContent.textContent = displayText;
-        fitText(textContent, textDisplayArea);
-      } else {
-        showPlaceholder();
+  function exitEditMode() {
+    // Read current text from contenteditable
+    displayText = textContent.textContent.replace(/\u200B/g, '');
+    cursorPos = getCursorPosFromSelection();
+
+    // Clamp cursor
+    if (cursorPos > displayText.length) cursorPos = displayText.length;
+    if (cursorPos < 0) cursorPos = 0;
+
+    textContent.blur();
+    document.body.classList.remove('edit-mode');
+
+    if (displayText) {
+      state = 'displaying';
+      renderText();
+    } else {
+      state = 'idle';
+      cursorPos = 0;
+      showPlaceholder();
+    }
+  }
+
+  // --- Tap to position cursor ---
+  function handleTapToPosition(e) {
+    if (state !== 'displaying' && state !== 'idle') return;
+    if (!displayText) return;
+    if (longPressTriggered) return;
+
+    var x, y;
+    if (e.changedTouches) {
+      x = e.changedTouches[0].clientX;
+      y = e.changedTouches[0].clientY;
+    } else {
+      x = e.clientX;
+      y = e.clientY;
+    }
+
+    // Use caretRangeFromPoint (WebKit) or caretPositionFromPoint
+    var range;
+    if (document.caretRangeFromPoint) {
+      range = document.caretRangeFromPoint(x, y);
+    } else if (document.caretPositionFromPoint) {
+      var pos = document.caretPositionFromPoint(x, y);
+      if (pos) {
+        range = document.createRange();
+        range.setStart(pos.offsetNode, pos.offset);
+        range.collapse(true);
       }
     }
-    editOverlay.classList.add('hidden');
-    state = displayText ? 'displaying' : 'idle';
+
+    if (range) {
+      // Temporarily set selection to get cursor position
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      cursorPos = getCursorPosFromSelection();
+      sel.removeAllRanges();
+      // Clamp
+      if (cursorPos > displayText.length) cursorPos = displayText.length;
+      if (cursorPos < 0) cursorPos = 0;
+      renderText();
+    }
   }
 
   // --- Event binding ---
@@ -227,11 +379,20 @@
       if (state === 'recording') stopRecording();
     });
 
-    // Long press on text area
+    // Prevent keyboard outside edit mode
+    textContent.addEventListener('focus', function () {
+      if (state !== 'editing') {
+        textContent.blur();
+      }
+    });
+
+    // Long press on text area — touch
     textDisplayArea.addEventListener('touchstart', function (e) {
-      if (state !== 'displaying') return;
+      if (state !== 'displaying' && state !== 'idle') return;
+      longPressTriggered = false;
       longPressTimer = setTimeout(function () {
         longPressTimer = null;
+        longPressTriggered = true;
         enterEditMode();
       }, LONG_PRESS_MS);
     });
@@ -241,10 +402,55 @@
         longPressTimer = null;
       }
     });
-    textDisplayArea.addEventListener('touchend', function () {
+    textDisplayArea.addEventListener('touchend', function (e) {
       if (longPressTimer) {
         clearTimeout(longPressTimer);
         longPressTimer = null;
+      }
+      // Tap to position cursor (only if not long press)
+      if (!longPressTriggered && state === 'displaying') {
+        handleTapToPosition(e);
+      }
+    });
+
+    // Desktop: click to position cursor
+    textDisplayArea.addEventListener('click', function (e) {
+      // Only handle mouse clicks (touch is handled above)
+      if (e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents) return;
+      if (state === 'displaying') {
+        handleTapToPosition(e);
+      }
+    });
+
+    // Desktop: double-click to edit
+    textDisplayArea.addEventListener('dblclick', function (e) {
+      if (state === 'displaying') {
+        enterEditMode();
+      }
+    });
+
+    // Input during edit mode — refit text
+    textContent.addEventListener('input', function () {
+      if (state === 'editing') {
+        fitText(textContent, textDisplayArea);
+      }
+    });
+
+    // Paste — plain text only
+    textContent.addEventListener('paste', function (e) {
+      if (state !== 'editing') return;
+      e.preventDefault();
+      var text = (e.clipboardData || window.clipboardData).getData('text/plain');
+      document.execCommand('insertText', false, text);
+    });
+
+    // Keyboard button — toggle edit mode
+    keyboardBtn.addEventListener('click', function () {
+      if (state === 'recording') return;
+      if (state === 'editing') {
+        exitEditMode();
+      } else {
+        enterEditMode();
       }
     });
 
@@ -252,18 +458,17 @@
     clearBtn.addEventListener('click', function () {
       if (state === 'recording' || state === 'editing') return;
       displayText = '';
+      cursorPos = 0;
       showPlaceholder();
       state = 'idle';
     });
 
-    // Edit overlay buttons
-    editOk.addEventListener('click', function () { exitEditMode(true); });
-    editCancel.addEventListener('click', function () { exitEditMode(false); });
-
     // Resize handler
     window.addEventListener('resize', function () {
-      if (displayText && (state === 'displaying' || state === 'idle')) {
+      if (state === 'editing') {
         fitText(textContent, textDisplayArea);
+      } else if (displayText && (state === 'displaying' || state === 'idle')) {
+        renderText();
       }
     });
 

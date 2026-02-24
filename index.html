@@ -7,20 +7,27 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Touch STT">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta http-equiv="Cache-Control" content="max-age=60">
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=v1.0.0">
   <title>Touch STT</title>
 </head>
 <body>
   <div id="app">
     <div id="text-display-area">
-      <div id="text-content">按住下方按鈕開始說話</div>
+      <div id="text-content" contenteditable="true" spellcheck="false">按住下方按鈕開始說話</div>
     </div>
     <div id="button-area">
       <div id="volume-bar"><div id="volume-fill"></div></div>
       <div id="status-text">按住說話</div>
       <div id="buttons-row">
-        <div class="btn-side"></div>
+        <div class="btn-side">
+          <button id="keyboard-btn" aria-label="鍵盤編輯">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M20 5H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 12H4V7h16v10zM6 10h2v2H6v-2zm0 4h8v2H6v-2zm10 0h2v2h-2v-2zm-6-4h2v2h-2v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2z"/>
+            </svg>
+          </button>
+        </div>
         <div id="record-btn-wrap">
           <div class="ripple-ring" id="ripple1"></div>
           <div class="ripple-ring" id="ripple2"></div>
@@ -42,17 +49,10 @@
       </div>
     </div>
 
-    <div id="edit-overlay" class="hidden">
-      <textarea id="edit-textarea"></textarea>
-      <div id="edit-buttons">
-        <button id="edit-cancel">取消</button>
-        <button id="edit-ok">確定</button>
-      </div>
-    </div>
   </div>
 
-  <script src="js/speech.js"></script>
-  <script src="js/textfit.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/speech.js?v=v1.0.0"></script>
+  <script src="js/textfit.js?v=v1.0.0"></script>
+  <script src="js/app.js?v=v1.0.0"></script>
 </body>
 </html>
