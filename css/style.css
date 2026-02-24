@@ -117,10 +117,6 @@ html, body {
   color: #f44336;
 }
 
-body.edit-mode #clear-btn {
-  pointer-events: none;
-  opacity: 0.3;
-}
 
 #record-btn-wrap {
   position: relative;

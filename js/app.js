@@ -437,7 +437,11 @@
 
     // Clear button
     clearBtn.addEventListener('click', function () {
-      if (state === 'recording' || state === 'editing') return;
+      if (state === 'recording') return;
+      if (state === 'editing') {
+        hiddenInput.blur();
+        document.body.classList.remove('edit-mode');
+      }
       displayText = '';
       cursorPos = 0;
       showPlaceholder();
