@@ -448,27 +448,8 @@
       state = 'idle';
     });
 
-    // --- Viewport height tracking (iOS keyboard) ---
-    function updateVh() {
-      var vh = (window.visualViewport ? window.visualViewport.height : window.innerHeight) / 100;
-      document.documentElement.style.setProperty('--vh', vh + 'px');
-    }
-    updateVh();
-
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', function () {
-        updateVh();
-        if (state === 'editing') {
-          fitText(textContent, textDisplayArea);
-        } else if (displayText && (state === 'displaying' || state === 'idle')) {
-          renderText();
-        }
-      });
-    }
-
     // Resize handler
     window.addEventListener('resize', function () {
-      updateVh();
       if (state === 'editing') {
         fitText(textContent, textDisplayArea);
       } else if (displayText && (state === 'displaying' || state === 'idle')) {
